@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>寵物年齡換算與線上預約系統 - 寵物美容師的好幫手</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Noto Sans TC -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        cream: {
+                            50: '#FFFDF9',
+                            100: '#FFF9EF',
+                            200: '#FFF3DF',
+                            300: '#FFE4BC',
+                        },
+                        warmorange: {
+                            400: '#FF9E5E',
+                            500: '#FF7E33',
+                            600: '#E65C0D',
+                        },
+                        milktea: {
+                            100: '#F5EBE1',
+                            200: '#E6D5C3',
+                            300: '#D5BDA6',
+                            800: '#6B4F3A',
+                            900: '#4A3525',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Noto Sans TC', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #FFF9EF;
+            color: #4A3525;
+        }
+        
+        .card-shadow {
+            box-shadow: 0 10px 30px -5px rgba(213, 189, 166, 0.3);
+        }
+
+        .btn-bounce:active {
+            transform: scale(0.96);
+        }
+
+        /* 浮動小腳印動畫 */
+        @keyframes floatPaw {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-8px) rotate(5deg); }
+        }
+
+        .animate-paw {
+            animation: floatPaw 3s ease-in-out infinite;
+        }
+
+        /* 漸變與切換動畫 */
+        .tab-content {
+            transition: all 0.3s ease-in-out;
+        }
+
+        .hide-tab {
+            display: none;
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        .show-tab {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between p-3 sm:p-4 md:p-8">
+
+    <!-- 主容器 -->
+    <div class="max-w-2xl mx-auto w-full flex-grow">
+
+        <!-- 頂部工作室抬頭與編輯按鈕 -->
+        <header class="text-center mb-6 relative">
+            <div id="shopHeaderContainer" class="inline-flex items-center gap-2 bg-white/80 backdrop-blur border border-milktea-200 px-4 py-1.5 rounded-full shadow-sm cursor-pointer hover:bg-white transition-all group" onclick="openShopModal()">
+                <i class="fa-solid fa-store text-warmorange-500"></i>
+                <span id="shopNameDisplay" class="font-medium text-milktea-900 text-sm md:text-base">暖心寵物美容沙龍</span>
+                <i class="fa-solid fa-pen text-xs text-milktea-300 group-hover:text-warmorange-500 transition-colors"></i>
+            </div>
+            
+            <h1 class="text-2xl md:text-3xl font-bold text-milktea-900 mt-4 flex items-center justify-center gap-2">
+                <i class="fa-solid fa-scissors text-warmorange-500 animate-paw"></i>
+                寵物美容助手 & 換算器
+                <i class="fa-solid fa-bone text-warmorange-400 text-xl"></i>
+            </h1>
+            <p class="text-xs md:text-sm text-milktea-800/80 mt-1">狗狗年齡換算 · 寵物美容線上預約 · 一站式貼心服務</p>
+
+            <!-- 導覽頁籤 (Tabs) -->
+            <div class="flex bg-cream-200/70 p-1.5 rounded-2xl border border-milktea-200 mt-5 max-w-md mx-auto shadow-inner">
+                <button type="button" id="tabAgeBtn" onclick="switchTab('age')" class="flex-1 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 bg-white text-warmorange-600 shadow-sm">
+                    <i class="fa-solid fa-calculator"></i> 年齡換算器
+                </button>
+                <button type="button" id="tabBookingBtn" onclick="switchTab('booking')" class="flex-1 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 text-milktea-800 hover:text-milktea-900">
+                    <i class="fa-solid fa-calendar-check"></i> 線上美容預約
+                </button>
+            </div>
+        </header>
+
+        <!-- ==========================================
+             分頁一：狗狗年齡換算器
+             ========================================== -->
+        <main id="ageTabContent" class="tab-content show-tab bg-white rounded-3xl p-5 md:p-8 card-shadow border border-cream-200 relative overflow-hidden">
+            <i class="fa-solid fa-paw absolute -right-6 -top-6 text-8xl text-cream-200/50 -rotate-12 pointer-events-none"></i>
+
+            <form id="calcForm" onsubmit="calculateAge(event)" class="space-y-5 relative z-10">
+
+                <!-- 狗狗名稱（選填） -->
+                <div>
+                    <label class="block text-sm font-semibold text-milktea-900 mb-1.5 flex items-center gap-1.5">
+                        <i class="fa-solid fa-tag text-warmorange-400"></i> 寶貝名字 <span class="text-xs font-normal text-gray-400">(選填)</span>
+                    </label>
+                    <input type="text" id="dogName" placeholder="例如：圓圓、Mini" class="w-full px-4 py-2.5 rounded-2xl bg-cream-50 border border-milktea-200 focus:outline-none focus:ring-2 focus:ring-warmorange-400 focus:bg-white transition-all text-milktea-900 placeholder-milktea-300">
+                </div>
+
+                <!-- 狗狗實際年齡輸入 -->
+                <div>
+                    <label class="block text-sm font-semibold text-milktea-900 mb-1.5 flex items-center justify-between">
+                        <span class="flex items-center gap-1.5"><i class="fa-solid fa-cake-candles text-warmorange-400"></i> 狗狗實際年齡 (歲) <span class="text-red-500">*</span></span>
+                        <span class="text-xs text-warmorange-600 bg-cream-200 px-2 py-0.5 rounded-full">可填小數，如 0.5 歲</span>
+                    </label>
+                    <div class="relative">
+                        <input type="number" id="dogAge" step="0.1" min="0.1" max="30" placeholder="請輸入年齡，例如：2 或 1.5" required class="w-full px-4 py-3 rounded-2xl bg-cream-50 border border-milktea-200 focus:outline-none focus:ring-2 focus:ring-warmorange-400 focus:bg-white transition-all text-lg font-semibold text-milktea-900 placeholder-milktea-300">
+                        <span class="absolute right-4 top-1/2 -translate-y-1/2 font-medium text-milktea-800">歲</span>
+                    </div>
+                </div>
+
+                <!-- 計算模式選擇 -->
+                <div>
+                    <label class="block text-sm font-semibold text-milktea-900 mb-1.5 flex items-center gap-1.5">
+                        <i class="fa-solid fa-sliders text-warmorange-400"></i> 換算模式
+                    </label>
+                    <div class="grid grid-cols-2 gap-2 bg-cream-100 p-1 rounded-2xl border border-cream-200">
+                        <button type="button" id="modeSizeBtn" onclick="setMode('size')" class="py-2 text-xs md:text-sm font-medium rounded-xl transition-all bg-white text-warmorange-600 shadow-sm">
+                            <i class="fa-solid fa-dog mr-1"></i> 按體型對照 (推薦)
+                        </button>
+                        <button type="button" id="modeScienceBtn" onclick="setMode('science')" class="py-2 text-xs md:text-sm font-medium rounded-xl transition-all text-milktea-800 hover:text-milktea-900">
+                            <i class="fa-solid fa-dna mr-1"></i> DNA 甲基化公式
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 犬種體型選擇 (預設顯示) -->
+                <div id="sizeSelectContainer">
+                    <label class="block text-sm font-semibold text-milktea-900 mb-2 flex items-center gap-1.5">
+                        <i class="fa-solid fa-weight-scale text-warmorange-400"></i> 犬種體型大小 <span class="text-red-500">*</span>
+                    </label>
+                    <div class="grid grid-cols-3 gap-2 md:gap-3">
+                        <label class="cursor-pointer">
+                            <input type="radio" name="dogSize" value="small" checked class="peer hidden">
+                            <div class="border-2 border-cream-200 rounded-2xl p-3 text-center peer-checked:border-warmorange-500 peer-checked:bg-cream-100 hover:bg-cream-50 transition-all">
+                                <i class="fa-solid fa-shield-dog text-xl text-warmorange-500 mb-1 block"></i>
+                                <div class="font-bold text-sm text-milktea-900">小型犬</div>
+                                <div class="text-[10px] text-milktea-800/70">10 kg 以下</div>
+                            </div>
+                        </label>
+
+                        <label class="cursor-pointer">
+                            <input type="radio" name="dogSize" value="medium" class="peer hidden">
+                            <div class="border-2 border-cream-200 rounded-2xl p-3 text-center peer-checked:border-warmorange-500 peer-checked:bg-cream-100 hover:bg-cream-50 transition-all">
+                                <i class="fa-solid fa-dog text-2xl text-warmorange-500 mb-1 block"></i>
+                                <div class="font-bold text-sm text-milktea-900">中型犬</div>
+                                <div class="text-[10px] text-milktea-800/70">10 ~ 25 kg</div>
+                            </div>
+                        </label>
+
+                        <label class="cursor-pointer">
+                            <input type="radio" name="dogSize" value="large" class="peer hidden">
+                            <div class="border-2 border-cream-200 rounded-2xl p-3 text-center peer-checked:border-warmorange-500 peer-checked:bg-cream-100 hover:bg-cream-50 transition-all">
+                                <i class="fa-solid fa-shield-dog text-3xl text-warmorange-500 mb-1 block"></i>
+                                <div class="font-bold text-sm text-milktea-900">大型犬</div>
+                                <div class="text-[10px] text-milktea-800/70">25 kg 以上</div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- 科學公式簡介 (隱藏預設) -->
+                <div id="scienceInfoContainer" class="hidden bg-cream-100 border border-warmorange-400/30 p-3.5 rounded-2xl text-xs text-milktea-800 leading-relaxed">
+                    <i class="fa-solid fa-circle-info text-warmorange-500 mr-1"></i>
+                    採用 UCSD 研發之 DNA 甲基化公式：<br>
+                    <span class="font-mono bg-white px-2 py-0.5 rounded border border-cream-300 inline-block my-1 text-warmorange-600 font-bold">人類年齡 = 16 × ln(狗狗年齡) + 31</span>
+                </div>
+
+                <!-- 送出按鈕 -->
+                <button type="submit" class="w-full bg-gradient-to-r from-warmorange-400 to-warmorange-500 hover:from-warmorange-500 hover:to-warmorange-600 text-white font-bold py-3.5 px-6 rounded-2xl shadow-lg shadow-warmorange-500/30 transition-all btn-bounce flex items-center justify-center gap-2 text-base md:text-lg">
+                    <i class="fa-solid fa-calculator"></i> 立即換算人類年齡
+                </button>
+            </form>
+
+            <!-- 計算結果區塊 -->
+            <div id="resultCard" class="hidden mt-6 pt-6 border-t-2 border-dashed border-cream-200">
+                <div class="bg-gradient-to-br from-cream-100 to-cream-200 rounded-3xl p-5 border border-warmorange-400/20 text-center relative overflow-hidden">
+                    <div class="text-xs font-semibold uppercase tracking-wider text-warmorange-600 mb-1">換算結果</div>
+                    
+                    <div class="text-xl md:text-2xl font-bold text-milktea-900 mb-2">
+                        <span id="resDogName">毛孩</span> 相當於人類的
+                    </div>
+
+                    <div class="my-3 inline-flex items-baseline justify-center gap-1 bg-white px-6 py-2.5 rounded-full shadow-inner border border-cream-300">
+                        <span class="text-4xl md:text-5xl font-black text-warmorange-500 tracking-tight" id="resHumanAge">0</span>
+                        <span class="text-xl font-bold text-milktea-900">歲</span>
+                    </div>
+
+                    <div class="mt-2">
+                        <span id="resStageTag" class="inline-block bg-warmorange-500 text-white text-xs md:text-sm font-bold px-3 py-1 rounded-full shadow-sm">
+                            幼犬期
+                        </span>
+                    </div>
+                </div>
+
+                <!-- 階段說明與建議 -->
+                <div class="mt-4 space-y-3">
+                    <div class="bg-cream-50 rounded-2xl p-4 border border-milktea-100">
+                        <h4 class="font-bold text-sm text-milktea-900 flex items-center gap-2 mb-1">
+                            <i class="fa-solid fa-heart-pulse text-warmorange-500"></i> 生理階段特徵
+                        </h4>
+                        <p id="resStageDesc" class="text-xs md:text-sm text-milktea-800 leading-relaxed">--</p>
+                    </div>
+
+                    <div class="bg-cream-50 rounded-2xl p-4 border border-milktea-100">
+                        <h4 class="font-bold text-sm text-milktea-900 flex items-center gap-2 mb-1">
+                            <i class="fa-solid fa-scissors text-warmorange-500"></i> 美容護理建議
+                        </h4>
+                        <p id="resGroomingCare" class="text-xs md:text-sm text-milktea-800 leading-relaxed">--</p>
+                    </div>
+                </div>
+
+                <!-- 動作按鈕 -->
+                <div class="mt-5 flex flex-col sm:flex-row gap-3">
+                    <button type="button" onclick="copyResultMessage()" class="flex-1 bg-milktea-800 hover:bg-milktea-900 text-white text-xs md:text-sm font-bold py-3 px-4 rounded-2xl transition-all btn-bounce flex items-center justify-center gap-2 shadow-md">
+                        <i class="fa-regular fa-copy"></i> 複製結果卡片 (給主人)
+                    </button>
+                    <button type="button" onclick="transferToBooking()" class="flex-1 bg-gradient-to-r from-warmorange-400 to-warmorange-500 hover:from-warmorange-500 hover:to-warmorange-600 text-white text-xs md:text-sm font-bold py-3 px-4 rounded-2xl transition-all btn-bounce flex items-center justify-center gap-2 shadow-md">
+                        <i class="fa-solid fa-calendar-plus"></i> 帶入資訊，立即線上預約
+                    </button>
+                </div>
+            </div>
+        </main>
+
+        <!-- ==========================================
+             分頁二：寵物美容線上預約系統
+             ========================================== -->
+        <main id="bookingTabContent" class="tab-content hide-tab bg-white rounded-3xl p-5 md:p-8 card-shadow border border-cream-200 relative">
+            
+            <form id="bookingForm" onsubmit="submitBooking(event)" class="space-y-6">
+                
+                <!-- 1. 選擇服務項目 -->
+                <div>
+                    <label class="block text-sm font-bold text-milktea-900 mb-2.5 flex items-center gap-1.5">
+                        <i class="fa-solid fa-spa text-warmorange-500"></i> 1. 選擇美容服務項目 <span class="text-red-500">*</span>
+                    </label>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <!-- 服務卡片 1 -->
+                        <label class="cursor-pointer">
+                            <input type="radio" name="serviceItem" value="基礎洗澡保養" checked class="peer hidden" onchange="updateServiceSelection()">
+                            <div class="border-2 border-cream-200 rounded-2xl p-3.5 peer-checked:border-warmorange-500 peer-checked:bg-cream-100 hover:bg-cream-50 transition-all h-full flex flex-col justify-between">
+                                <div>
+                                    <div class="flex justify-between items-start mb-1">
+                                        <span class="font-bold text-sm text-milktea-900">基礎洗澡保養</span>
+                                        <span class="text-xs font-bold text-warmorange-600 bg-white px-2 py-0.5 rounded-md border border-cream-300">NT$ 500起</span>
+                                    </div>
+                                    <p class="text-xs text-milktea-800/80">洗澡、清耳朵、剪指甲、修腳底毛、擠肛門腺。</p>
+                                </div>
+                                <div class="text-[11px] text-warmorange-500 mt-2 font-medium"><i class="fa-regular fa-clock mr-1"></i>約 1 ~ 1.5 小時</div>
+                            </div>
+                        </label>
+
+                        <!-- 服務卡片 2 -->
+                        <label class="cursor-pointer">
+                            <input type="radio" name="serviceItem" value="精緻大美容 (洗+剪造型)" class="peer hidden" onchange="updateServiceSelection()">
+                            <div class="border-2 border-cream-200 rounded-2xl p-3.5 peer-checked:border-warmorange-500 peer-checked:bg-cream-100 hover:bg-cream-50 transition-all h-full flex flex-col justify-between">
+                                <div>
+                                    <div class="flex justify-between items-start mb-1">
+                                        <span class="font-bold text-sm text-milktea-900">精緻大美容 (洗+全身修剪)</span>
+                                        <span class="text-xs font-bold text-warmorange-600 bg-white px-2 py-0.5 rounded-md border border-cream-300">NT$ 1,200起</span>
+                                    </div>
+                                    <p class="text-xs text-milktea-800/80">含基礎保養，搭配專業手剪全身造型修剪。</p>
+                                </div>
+                                <div class="text-[11px] text-warmorange-500 mt-2 font-medium"><i class="fa-regular fa-clock mr-1"></i>約 2.5 ~ 3.5 小時</div>
+                            </div>
+                        </label>
+
+                        <!-- 服務卡片 3 -->
+                        <label class="cursor-pointer">
+                            <input type="radio" name="serviceItem" value="草本泥浴/碳酸泉 SPA" class="peer hidden" onchange="updateServiceSelection()">
+                            <div class="border-2 border-cream-200 rounded-2xl p-3.5 peer-checked:border-warmorange-500 peer-checked:bg-cream-100 hover:bg-cream-50 transition-all h-full flex flex-col justify-between">
+                                <div>
+                                    <div class="flex justify-between items-start mb-1">
+                                        <span class="font-bold text-sm text-milktea-900">深層護膚 SPA 泡澡</span>
+                                        <span class="text-xs font-bold text-warmorange-600 bg-white px-2 py-0.5 rounded-md border border-cream-300">NT$ 800起</span>
+                                    </div>
+                                    <p class="text-xs text-milktea-800/80">洗澡加購日本微泡碳酸泉/死海泥舒緩敏感肌膚。</p>
+                                </div>
+                                <div class="text-[11px] text-warmorange-500 mt-2 font-medium"><i class="fa-regular fa-clock mr-1"></i>約 1.5 ~ 2 小時</div>
+                            </div>
+                        </label>
+
+                        <!-- 服務卡片 4 -->
+                        <label class="cursor-pointer">
+                            <input type="radio" name="serviceItem" value="局部小修護理" class="peer hidden" onchange="updateServiceSelection()">
+                            <div class="border-2 border-cream-200 rounded-2xl p-3.5 peer-checked:border-warmorange-500 peer-checked:bg-cream-100 hover:bg-cream-50 transition-all h-full flex flex-col justify-between">
+                                <div>
+                                    <div class="flex justify-between items-start mb-1">
+                                        <span class="font-bold text-sm text-milktea-900">局部護理 / 單項修剪</span>
+                                        <span class="text-xs font-bold text-warmorange-600 bg-white px-2 py-0.5 rounded-md border border-cream-300">NT$ 200起</span>
+                                    </div>
+                                    <p class="text-xs text-milktea-800/80">單純剪指甲、修腳底毛、修眼睛周圍雜毛。</p>
+                                </div>
+                                <div class="text-[11px] text-warmorange-500 mt-2 font-medium"><i class="fa-regular fa-clock mr-1"></i>約 20 ~ 30 分鐘</div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- 2. 寵物與主人基本資料 -->
+                <div>
+                    <label class="block text-sm font-bold text-milktea-900 mb-2.5 flex items-center gap-1.5">
+                        <i class="fa-solid fa-address-card text-warmorange-500"></i> 2. 填寫預約資料
+                    </label>
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <!-- 主人姓名 -->
+                        <div>
+                            <label class="block text-xs font-semibold text-milktea-800 mb-1">主人姓名 <span class="text-red-500">*</span></label>
+                            <input type="text" id="ownerName" placeholder="例如：陳小姐" required class="w-full px-3.5 py-2.5 rounded-xl bg-cream-50 border border-milktea-200 focus:outline-none focus:ring-2 focus:ring-warmorange-400 text-sm">
+                        </div>
+
+                        <!-- 聯絡電話 -->
+                        <div>
+                            <label class="block text-xs font-semibold text-milktea-800 mb-1">聯絡電話 <span class="text-red-500">*</span></label>
+                            <input type="tel" id="ownerPhone" placeholder="0912-345-678" required class="w-full px-3.5 py-2.5 rounded-xl bg-cream-50 border border-milktea-200 focus:outline-none focus:ring-2 focus:ring-warmorange-400 text-sm">
+                        </div>
+
+                        <!-- 寵物名字 -->
+                        <div>
+                            <label class="block text-xs font-semibold text-milktea-800 mb-1">毛孩名字 <span class="text-red-500">*</span></label>
+                            <input type="text" id="bookPetName" placeholder="例如：圓圓" required class="w-full px-3.5 py-2.5 rounded-xl bg-cream-50 border border-milktea-200 focus:outline-none focus:ring-2 focus:ring-warmorange-400 text-sm">
+                        </div>
+
+                        <!-- 寵物品種 -->
+                        <div>
+                            <label class="block text-xs font-semibold text-milktea-800 mb-1">品種 <span class="text-xs text-gray-400">(選填)</span></label>
+                            <input type="text" id="bookPetBreed" placeholder="例如：貴賓、柴犬、米克斯" class="w-full px-3.5 py-2.5 rounded-xl bg-cream-50 border border-milktea-200 focus:outline-none focus:ring-2 focus:ring-warmorange-400 text-sm">
+                        </div>
+
+                        <!-- 寵物體型 -->
+                        <div>
+                            <label class="block text-xs font-semibold text-milktea-800 mb-1">體型尺寸 <span class="text-red-500">*</span></label>
+                            <select id="bookPetSize" class="w-full px-3.5 py-2.5 rounded-xl bg-cream-50 border border-milktea-200 focus:outline-none focus:ring-2 focus:ring-warmorange-400 text-sm font-medium">
+                                <option value="小型犬 (10kg以下)">小型犬 (10 kg 以下)</option>
+                                <option value="中型犬 (10~25kg)">中型犬 (10 ~ 25 kg)</option>
+                                <option value="大型犬 (25kg以上)">大型犬 (25 kg 以上)</option>
+                            </select>
+                        </div>
+
+                        <!-- 寵物實際年齡 -->
+                        <div>
+                            <label class="block text-xs font-semibold text-milktea-800 mb-1">年齡 (歲)</label>
+                            <input type="number" id="bookPetAge" step="0.1" placeholder="例如：3" class="w-full px-3.5 py-2.5 rounded-xl bg-cream-50 border border-milktea-200 focus:outline-none focus:ring-2 focus:ring-warmorange-400 text-sm">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. 預約日期與時段 -->
+                <div>
+                    <label class="block text-sm font-bold text-milktea-900 mb-2.5 flex items-center gap-1.5">
+                        <i class="fa-solid fa-calendar-days text-warmorange-500"></i> 3. 選擇預約時間
+                    </label>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-milktea-800 mb-1">預約日期 <span class="text-red-500">*</span></label>
+                            <input type="date" id="bookDate" required class="w-full px-3.5 py-2.5 rounded-xl bg-cream-50 border border-milktea-200 focus:outline-none focus:ring-2 focus:ring-warmorange-400 text-sm font-medium">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-milktea-800 mb-1">偏好時段 <span class="text-red-500">*</span></label>
+                            <select id="bookTimeSlot" class="w-full px-3.5 py-2.5 rounded-xl bg-cream-50 border border-milktea-200 focus:outline-none focus:ring-2 focus:ring-warmorange-400 text-sm font-medium">
+                                <option value="早上時段 (10:00 - 12:00)">早上時段 (10:00 - 12:00)</option>
+                                <option value="下午時段 (13:30 - 16:00)">下午時段 (13:30 - 16:00)</option>
+                                <option value="傍晚時段 (16:30 - 19:00)">傍晚時段 (16:30 - 19:00)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. 特殊注意事項/備註 -->
+                <div>
+                    <label class="block text-sm font-bold text-milktea-900 mb-1.5 flex items-center justify-between">
+                        <span class="flex items-center gap-1.5"><i class="fa-solid fa-note-sticky text-warmorange-500"></i> 特殊注意事項 / 備註</span>
+                        <span class="text-[11px] text-gray-400">複選標籤快捷輸入</span>
+                    </label>
+
+                    <!-- 快捷按鈕標籤 -->
+                    <div class="flex flex-wrap gap-1.5 mb-2">
+                        <button type="button" onclick="appendTag('皮膚容易過敏')" class="text-xs bg-cream-100 hover:bg-cream-200 border border-cream-300 text-milktea-800 px-2.5 py-1 rounded-lg transition-all">+ 皮膚過敏</button>
+                        <button type="button" onclick="appendTag('高齡犬關節不好')" class="text-xs bg-cream-100 hover:bg-cream-200 border border-cream-300 text-milktea-800 px-2.5 py-1 rounded-lg transition-all">+ 高齡關節弱</button>
+                        <button type="button" onclick="appendTag('第一次洗澡較緊張')" class="text-xs bg-cream-100 hover:bg-cream-200 border border-cream-300 text-milktea-800 px-2.5 py-1 rounded-lg transition-all">+ 易緊張敏感</button>
+                        <button type="button" onclick="appendTag('碰耳朵/剪指甲會生氣')" class="text-xs bg-cream-100 hover:bg-cream-200 border border-cream-300 text-milktea-800 px-2.5 py-1 rounded-lg transition-all">+ 抗拒護理</button>
+                    </div>
+
+                    <textarea id="bookNotes" rows="2" placeholder="請告知任何需要美容師注意的事項，如：開過刀、傳染病史、脾氣個性等..." class="w-full px-3.5 py-2.5 rounded-xl bg-cream-50 border border-milktea-200 focus:outline-none focus:ring-2 focus:ring-warmorange-400 text-sm placeholder-milktea-300"></textarea>
+                </div>
+
+                <!-- 提交預約按鈕 -->
+                <button type="submit" class="w-full bg-gradient-to-r from-warmorange-400 to-warmorange-500 hover:from-warmorange-500 hover:to-warmorange-600 text-white font-bold py-3.5 px-6 rounded-2xl shadow-lg shadow-warmorange-500/30 transition-all btn-bounce flex items-center justify-center gap-2 text-base md:text-lg">
+                    <i class="fa-solid fa-paper-plane"></i> 確認送出預約表單
+                </button>
+            </form>
+
+        </main>
+
+        <!-- 已建立的預約紀錄列表 (頁尾管理區) -->
+        <section class="mt-8 bg-white/90 backdrop-blur rounded-3xl p-5 md:p-6 card-shadow border border-cream-200">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold text-milktea-900 flex items-center gap-2 text-base md:text-lg">
+                    <i class="fa-solid fa-list-check text-warmorange-500"></i> 近期預約紀錄
+                </h3>
+                <span class="text-xs bg-cream-100 text-milktea-800 px-2.5 py-1 rounded-full border border-cream-200">儲存於本機</span>
+            </div>
+
+            <div id="bookingListContainer" class="space-y-3 max-h-60 overflow-y-auto pr-1">
+                <!-- 動態注入預約卡片 -->
+                <p class="text-xs text-center text-gray-400 py-4">目前尚無預約紀錄。</p>
+            </div>
+        </section>
+
+        <!-- 頁尾說明 -->
+        <footer class="text-center mt-6 text-xs text-milktea-800/60 space-y-1">
+            <p>© <span id="shopFooterName">暖心寵物美容沙龍</span> · 讓每隻毛孩享有最貼心的美容護理</p>
+        </footer>
+    </div>
+
+    <!-- Modal 1: 預約成功確認卡片 -->
+    <div id="bookingSuccessModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white rounded-3xl p-6 max-w-md w-full card-shadow animate-scaleUp relative overflow-hidden">
+            <div class="text-center">
+                <div class="w-14 h-14 bg-green-100 text-green-500 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl">
+                    <i class="fa-solid fa-check"></i>
+                </div>
+                <h3 class="text-xl font-bold text-milktea-900">預約成功！</h3>
+                <p class="text-xs text-milktea-800/80 mt-0.5">我們已收到您的預約資訊，美容師會儘快與您確認。</p>
+            </div>
+
+            <!-- 預約詳細卡片 -->
+            <div class="bg-cream-50 border border-cream-200 rounded-2xl p-4 my-4 space-y-2 text-xs md:text-sm text-milktea-900">
+                <div class="flex justify-between border-b border-cream-200 pb-1.5">
+                    <span class="text-gray-500">預約編號</span>
+                    <span class="font-mono font-bold text-warmorange-600" id="mBookId">#PET-1234</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-500">店家名稱</span>
+                    <span class="font-semibold" id="mShopName">暖心寵物美容</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-500">服務項目</span>
+                    <span class="font-semibold text-warmorange-600" id="mService">基礎洗澡</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-500">預約時間</span>
+                    <span class="font-semibold" id="mDateTime">2026-10-30 (上午)</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-500">毛孩資料</span>
+                    <span class="font-semibold" id="mPetInfo">圓圓 (貴賓)</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-500">主人聯絡</span>
+                    <span class="font-semibold" id="mOwnerInfo">陳小姐 (0912345678)</span>
+                </div>
+                <div id="mNotesRow" class="pt-1.5 border-t border-cream-200 text-xs text-milktea-800/80 hidden">
+                    <span class="font-semibold text-gray-500">備註：</span><span id="mNotes">--</span>
+                </div>
+            </div>
+
+            <!-- 操作按鈕 -->
+            <div class="space-y-2">
+                <button type="button" onclick="copyBookingLINEText()" class="w-full bg-milktea-800 hover:bg-milktea-900 text-white text-xs md:text-sm font-bold py-2.5 px-4 rounded-xl transition-all btn-bounce flex items-center justify-center gap-2">
+                    <i class="fa-regular fa-copy"></i> 複製預約單 (發送給 LINE 客服)
+                </button>
+                <div class="flex gap-2">
+                    <button type="button" onclick="downloadICS()" class="flex-1 bg-cream-200 hover:bg-cream-300 text-milktea-900 text-xs font-bold py-2.5 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5">
+                        <i class="fa-regular fa-calendar-plus"></i> 加入手機行事曆
+                    </button>
+                    <button type="button" onclick="closeBookingModal()" class="flex-1 bg-warmorange-500 hover:bg-warmorange-600 text-white text-xs font-bold py-2.5 px-3 rounded-xl transition-all">
+                        完成
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal 2: 自訂工作室名稱 -->
+    <div id="shopModal" class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white rounded-3xl p-6 max-w-sm w-full card-shadow animate-scaleUp">
+            <h3 class="text-lg font-bold text-milktea-900 mb-2 flex items-center gap-2">
+                <i class="fa-solid fa-store text-warmorange-500"></i> 設定您的美容工作室名稱
+            </h3>
+            <p class="text-xs text-milktea-800/80 mb-4">輸入店名後，所有預約單與訊息都會顯示您的工作室抬頭！</p>
+            
+            <input type="text" id="shopNameInput" placeholder="例如：毛寶貝寵物沙龍" class="w-full px-4 py-2.5 rounded-2xl bg-cream-50 border border-milktea-200 focus:outline-none focus:ring-2 focus:ring-warmorange-400 mb-4 font-medium text-milktea-900">
+            
+            <div class="flex justify-end gap-2">
+                <button type="button" onclick="closeShopModal()" class="px-4 py-2 text-xs font-semibold text-milktea-800 hover:bg-cream-100 rounded-xl transition-all">取消</button>
+                <button type="button" onclick="saveShopName()" class="px-4 py-2 text-xs font-semibold bg-warmorange-500 hover:bg-warmorange-600 text-white rounded-xl transition-all shadow-md">儲存設定</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast 複製成功提示 -->
+    <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-milktea-900 text-white text-xs md:text-sm px-5 py-3 rounded-full shadow-2xl flex items-center gap-2 z-50 opacity-0 pointer-events-none transition-all duration-300 transform translate-y-4">
+        <i class="fa-solid fa-circle-check text-green-400 text-base"></i>
+        <span id="toastMsg">已成功複製！</span>
+    </div>
+
+    <!-- JavaScript 邏輯 -->
+    <script>
+        // 全域變數與資料狀態
+        let currentMode = 'size'; 
+        let currentShopName = '暖心寵物美容沙龍';
+        let bookingRecords = [];
+        let currentLatestBooking = null;
+
+        // 頁面初始化
+        window.onload = function() {
+            // 載入店名
+            const savedShop = localStorage.getItem('petGroomingShopName');
+            if (savedShop) {
+                currentShopName = savedShop;
+                updateShopNameDisplay();
+            }
+
+            // 預設預約日期為明天
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            document.getElementById('bookDate').value = tomorrow.toISOString().split('T')[0];
+
+            // 載入舊有預約紀錄
+            loadBookingRecords();
+        };
+
+        // Tab 切換 (年齡換算 vs 預約)
+        function switchTab(tab) {
+            const ageBtn = document.getElementById('tabAgeBtn');
+            const bookingBtn = document.getElementById('tabBookingBtn');
+            const ageContent = document.getElementById('ageTabContent');
+            const bookingContent = document.getElementById('bookingTabContent');
+
+            if (tab === 'age') {
+                ageBtn.className = 'flex-1 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 bg-white text-warmorange-600 shadow-sm';
+                bookingBtn.className = 'flex-1 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 text-milktea-800 hover:text-milktea-900';
+                
+                ageContent.classList.remove('hide-tab');
+                ageContent.classList.add('show-tab');
+                bookingContent.classList.remove('show-tab');
+                bookingContent.classList.add('hide-tab');
+            } else {
+                bookingBtn.className = 'flex-1 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 bg-white text-warmorange-600 shadow-sm';
+                ageBtn.className = 'flex-1 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 text-milktea-800 hover:text-milktea-900';
+                
+                bookingContent.classList.remove('hide-tab');
+                bookingContent.classList.add('show-tab');
+                ageContent.classList.remove('show-tab');
+                ageContent.classList.add('hide-tab');
+            }
+        }
+
+        // 年齡換算器：模式切換
+        function setMode(mode) {
+            currentMode = mode;
+            const sizeBtn = document.getElementById('modeSizeBtn');
+            const scienceBtn = document.getElementById('modeScienceBtn');
+            const sizeContainer = document.getElementById('sizeSelectContainer');
+            const scienceContainer = document.getElementById('scienceInfoContainer');
+
+            if (mode === 'size') {
+                sizeBtn.className = 'py-2 text-xs md:text-sm font-medium rounded-xl transition-all bg-white text-warmorange-600 shadow-sm';
+                scienceBtn.className = 'py-2 text-xs md:text-sm font-medium rounded-xl transition-all text-milktea-800 hover:text-milktea-900';
+                sizeContainer.classList.remove('hidden');
+                scienceContainer.classList.add('hidden');
+            } else {
+                scienceBtn.className = 'py-2 text-xs md:text-sm font-medium rounded-xl transition-all bg-white text-warmorange-600 shadow-sm';
+                sizeBtn.className = 'py-2 text-xs md:text-sm font-medium rounded-xl transition-all text-milktea-800 hover:text-milktea-900';
+                sizeContainer.classList.add('hidden');
+                scienceContainer.classList.remove('hidden');
+            }
+        }
+
+        // 計算狗狗年齡
+        function calculateAge(event) {
+            event.preventDefault();
+
+            const dogAge = parseFloat(document.getElementById('dogAge').value);
+            const dogName = document.getElementById('dogName').value.trim() || '毛孩';
+            const dogSize = document.querySelector('input[name="dogSize"]:checked').value;
+
+            if (isNaN(dogAge) || dogAge <= 0) {
+                showToast('請輸入有效的狗狗年齡！');
+                return;
+            }
+
+            let humanAge = 0;
+
+            if (currentMode === 'science') {
+                if (dogAge < 1) {
+                    humanAge = Math.round(15 * dogAge);
+                } else {
+                    humanAge = Math.round(16 * Math.log(dogAge) + 31);
+                }
+            } else {
+                if (dogAge <= 1) {
+                    humanAge = Math.round(dogAge * 15);
+                } else if (dogAge <= 2) {
+                    humanAge = 15 + Math.round((dogAge - 1) * 9);
+                } else {
+                    const extraYears = dogAge - 2;
+                    let yearlyMultiplier = 4;
+                    if (dogSize === 'medium') yearlyMultiplier = 5;
+                    if (dogSize === 'large') yearlyMultiplier = 6.5;
+
+                    humanAge = Math.round(24 + (extraYears * yearlyMultiplier));
+                }
+            }
+
+            const stageInfo = getStageDetails(dogAge, humanAge, dogSize);
+
+            document.getElementById('resDogName').textContent = dogName;
+            document.getElementById('resHumanAge').textContent = humanAge;
+            document.getElementById('resStageTag').textContent = stageInfo.title;
+            document.getElementById('resStageDesc').textContent = stageInfo.desc;
+            document.getElementById('resGroomingCare').textContent = stageInfo.grooming;
+
+            const resultCard = document.getElementById('resultCard');
+            resultCard.classList.remove('hidden');
+            resultCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        // 生命階段詳細建議
+        function getStageDetails(dogAge, humanAge, dogSize) {
+            if (humanAge <= 15) {
+                return {
+                    title: '幼犬期 (社會化黃金期)',
+                    desc: '相當於人類孩童階段！好奇心強，骨骼與皮膚免疫系統正快速發育。',
+                    grooming: '💡 美容建議：強烈推薦體驗「幼犬社會化洗澡」，讓毛孩習慣水聲與吹風機，培養美好洗澡經驗！'
+                };
+            } else if (humanAge <= 25) {
+                return {
+                    title: '青春期 (活力充沛期)',
+                    desc: '精力充沛，活動量極高，毛髮正逐漸換成成犬密毛。',
+                    grooming: '💡 美容建議：容易產生皮膚油脂或打結，建議 2~3 週定期保養清潔與廢毛梳理。'
+                };
+            } else if (humanAge <= 45) {
+                return {
+                    title: '黃金壯年期',
+                    desc: '生理與心理最成熟穩定的黃金時期！',
+                    grooming: '💡 美容建議：可安排精緻大美容造型修剪與 SPA 保濕深層清潔，維護皮膚健康。'
+                };
+            } else if (humanAge <= 60) {
+                return {
+                    title: '熟齡期 (熟齡養護)',
+                    desc: '身體新陳代謝放緩，活力減退，關節與肌力需多加關注。',
+                    grooming: '💡 美容建議：洗澡溫和低敏為主，不宜久站，美容過程中給予適度休息與伸展。'
+                };
+            } else {
+                return {
+                    title: '高齡長青期 (長者照護)',
+                    desc: '聽力與關節較為脆弱，需要更多耐心與溫柔呵護。',
+                    grooming: '💡 美容建議：採「快速、安全、不勉強」原則，注重防滑、保暖與雙人安全輔助。'
+                };
+            }
+        }
+
+        // 將換算結果資訊直接帶入預約表單
+        function transferToBooking() {
+            const dogName = document.getElementById('dogName').value.trim();
+            const dogAge = document.getElementById('dogAge').value;
+            const dogSize = document.querySelector('input[name="dogSize"]:checked').value;
+
+            if (dogName) document.getElementById('bookPetName').value = dogName;
+            if (dogAge) document.getElementById('bookPetAge').value = dogAge;
+
+            // 對應體型 Select
+            const sizeSelect = document.getElementById('bookPetSize');
+            if (dogSize === 'small') sizeSelect.value = '小型犬 (10kg以下)';
+            else if (dogSize === 'medium') sizeSelect.value = '中型犬 (10~25kg)';
+            else if (dogSize === 'large') sizeSelect.value = '大型犬 (25kg以上)';
+
+            // 切換至預約分頁
+            switchTab('booking');
+            showToast('已為您帶入毛孩資訊，請繼續完成預約流程！');
+        }
+
+        // 備註快捷按鈕
+        function appendTag(tagText) {
+            const notesArea = document.getElementById('bookNotes');
+            if (notesArea.value) {
+                if (!notesArea.value.includes(tagText)) {
+                    notesArea.value += `、${tagText}`;
+                }
+            } else {
+                notesArea.value = tagText;
+            }
+        }
+
+        // 提交預約表單
+        function submitBooking(event) {
+            event.preventDefault();
+
+            const serviceItem = document.querySelector('input[name="serviceItem"]:checked').value;
+            const ownerName = document.getElementById('ownerName').value.trim();
+            const ownerPhone = document.getElementById('ownerPhone').value.trim();
+            const petName = document.getElementById('bookPetName').value.trim();
+            const petBreed = document.getElementById('bookPetBreed').value.trim() || '未填寫';
+            const petSize = document.getElementById('bookPetSize').value;
+            const petAge = document.getElementById('bookPetAge').value || '未知';
+            const bookDate = document.getElementById('bookDate').value;
+            const bookTimeSlot = document.getElementById('bookTimeSlot').value;
+            const notes = document.getElementById('bookNotes').value.trim();
+
+            const bookingId = 'PET-' + Math.floor(1000 + Math.random() * 9000);
+
+            currentLatestBooking = {
+                id: bookingId,
+                shopName: currentShopName,
+                service: serviceItem,
+                ownerName,
+                ownerPhone,
+                petName,
+                petBreed,
+                petSize,
+                petAge,
+                date: bookDate,
+                timeSlot: bookTimeSlot,
+                notes: notes,
+                timestamp: new Date().getTime()
+            };
+
+            // 儲存至紀錄
+            bookingRecords.unshift(currentLatestBooking);
+            localStorage.setItem('petBookingRecords', JSON.stringify(bookingRecords));
+            renderBookingRecords();
+
+            // 填寫成功 Modal 資訊
+            document.getElementById('mBookId').textContent = '#' + bookingId;
+            document.getElementById('mShopName').textContent = currentShopName;
+            document.getElementById('mService').textContent = serviceItem;
+            document.getElementById('mDateTime').textContent = `${bookDate} (${bookTimeSlot.split(' ')[0]})`;
+            document.getElementById('mPetInfo').textContent = `${petName} (${petBreed} / ${petSize})`;
+            document.getElementById('mOwnerInfo').textContent = `${ownerName} (${ownerPhone})`;
+            
+            if (notes) {
+                document.getElementById('mNotes').textContent = notes;
+                document.getElementById('mNotesRow').classList.remove('hidden');
+            } else {
+                document.getElementById('mNotesRow').classList.add('hidden');
+            }
+
+            // 顯示成功 Modal
+            document.getElementById('bookingSuccessModal').classList.remove('hidden');
+        }
+
+        // 關閉預約確認 Modal
+        function closeBookingModal() {
+            document.getElementById('bookingSuccessModal').classList.add('hidden');
+        }
+
+        // 載入預約紀錄
+        function loadBookingRecords() {
+            const savedRecords = localStorage.getItem('petBookingRecords');
+            if (savedRecords) {
+                try {
+                    bookingRecords = JSON.parse(savedRecords);
+                    renderBookingRecords();
+                } catch (e) {
+                    bookingRecords = [];
+                }
+            }
+        }
+
+        // 渲染預約紀錄列表
+        function renderBookingRecords() {
+            const container = document.getElementById('bookingListContainer');
+            if (bookingRecords.length === 0) {
+                container.innerHTML = '<p class="text-xs text-center text-gray-400 py-4">目前尚無預約紀錄。</p>';
+                return;
+            }
+
+            container.innerHTML = bookingRecords.map((item, index) => `
+                <div class="bg-cream-50 border border-cream-200 p-3 rounded-2xl flex items-center justify-between text-xs">
+                    <div class="space-y-0.5">
+                        <div class="flex items-center gap-2">
+                            <span class="font-bold text-milktea-900">${item.petName}</span>
+                            <span class="text-[10px] bg-warmorange-500 text-white px-2 py-0.2 rounded-full">${item.service}</span>
+                        </div>
+                        <div class="text-milktea-800/80">
+                            <i class="fa-regular fa-calendar text-warmorange-400 mr-1"></i>${item.date} ${item.timeSlot.split(' ')[0]} | ${item.ownerName}
+                        </div>
+                    </div>
+                    <button type="button" onclick="deleteBooking(${index})" class="text-gray-300 hover:text-red-500 p-2 transition-colors" title="刪除紀錄">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        // 刪除預約紀錄
+        function deleteBooking(index) {
+            if (confirm('確定要刪除這筆預約紀錄嗎？')) {
+                bookingRecords.splice(index, 1);
+                localStorage.setItem('petBookingRecords', JSON.stringify(bookingRecords));
+                renderBookingRecords();
+                showToast('已刪除預約紀錄');
+            }
+        }
+
+        // 複製 LINE 預約卡片
+        function copyBookingLINEText() {
+            if (!currentLatestBooking) return;
+            const b = currentLatestBooking;
+
+            const text = 
+`🐾【${b.shopName}】美容線上預約單
+
+感謝您的預約！詳細資訊如下：
+-------------------------
+🔹 預約單號：#${b.id}
+🔹 服務項目：${b.service}
+🔹 預約日期：${b.date}
+🔹 預約時段：${b.timeSlot}
+-------------------------
+🐶 毛孩名字：${b.petName} (${b.petBreed} / ${b.petSize})
+👤 主人姓名：${b.ownerName}
+📞 聯絡電話：${b.ownerPhone}
+${b.notes ? `📝 注意事項：${b.notes}` : ''}
+-------------------------
+店家將於營業時間儘速向您確認最終時間安排，謝謝您！`;
+
+            copyToClipboard(text, '已複製預約單文字！可貼上至 LINE 客服');
+        }
+
+        // 下載 .ics 行事曆檔案
+        function downloadICS() {
+            if (!currentLatestBooking) return;
+            const b = currentLatestBooking;
+
+            const dateClean = b.date.replace(/-/g, '');
+            const icsData = 
+`BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Pet Grooming Booking//TW
+BEGIN:VEVENT
+SUMMARY:🐾 寵物美容預約: ${b.petName} (${b.service})
+DESCRIPTION:店家：${b.shopName}\\n毛孩：${b.petName}\\n服務：${b.service}\\n備註：${b.notes || '無'}
+DTSTART:${dateClean}T100000
+DTEND:${dateClean}T120000
+LOCATION:${b.shopName}
+END:VEVENT
+END:VCALENDAR`;
+
+            const blob = new Blob([icsData], { type: 'text/calendar;charset=utf-8' });
+            const link = document.createElement('a');
+            link.href = window.URL.createObjectURL(blob);
+            link.setAttribute('download', `寵物美容預約_${b.petName}_${b.date}.ics`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast('已下載日曆檔案 (.ics)！');
+        }
+
+        // 複製換算結果給主人
+        function copyResultMessage() {
+            const dogName = document.getElementById('dogName').value.trim() || '毛孩';
+            const dogAge = document.getElementById('dogAge').value;
+            const humanAge = document.getElementById('resHumanAge').textContent;
+            const stageTag = document.getElementById('resStageTag').textContent;
+            const grooming = document.getElementById('resGroomingCare').textContent;
+
+            const textToCopy = 
+`🐾【${currentShopName}】寵物年齡換算小卡
+
+親愛的家長您好！
+今天幫寶貝《${dogName}》洗澡時換算了一下：
+寶貝目前實際年齡：${dogAge} 歲
+換算成人類年齡約為：${humanAge} 歲 (${stageTag}) 囉！
+
+${grooming}
+
+有任何保養或洗澡預約，隨時歡迎聯繫我們喔！💕`;
+
+            copyToClipboard(textToCopy, '已成功複製 Line 訊息卡片！');
+        }
+
+        // 通用文字複製剪貼簿
+        function copyToClipboard(text, successMsg) {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            
+            try {
+                document.execCommand('copy');
+                showToast(successMsg);
+            } catch (err) {
+                showToast('複製失敗，請手動複製');
+            } finally {
+                document.body.removeChild(textarea);
+            }
+        }
+
+        // 店名 Modal
+        function openShopModal() {
+            document.getElementById('shopNameInput').value = currentShopName;
+            document.getElementById('shopModal').classList.remove('hidden');
+        }
+
+        function closeShopModal() {
+            document.getElementById('shopModal').classList.add('hidden');
+        }
+
+        function saveShopName() {
+            const inputName = document.getElementById('shopNameInput').value.trim();
+            if (inputName) {
+                currentShopName = inputName;
+                localStorage.setItem('petGroomingShopName', inputName);
+                updateShopNameDisplay();
+                showToast('工作室名稱已更新！');
+            }
+            closeShopModal();
+        }
+
+        function updateShopNameDisplay() {
+            document.getElementById('shopNameDisplay').textContent = currentShopName;
+            document.getElementById('shopFooterName').textContent = currentShopName;
+        }
+
+        // Toast 提示框
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toastMsg');
+            toastMsg.textContent = msg;
+
+            toast.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-4');
+            toast.classList.add('opacity-100', 'translate-y-0');
+
+            setTimeout(() => {
+                toast.classList.remove('opacity-100', 'translate-y-0');
+                toast.classList.add('opacity-0', 'pointer-events-none', 'translate-y-4');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
